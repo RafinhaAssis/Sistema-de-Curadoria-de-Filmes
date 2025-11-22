@@ -7,6 +7,8 @@ from service.component.manager_images import ManagerImages
 from service.validation.manager_validation import ManagerValidation
 from service.commons.manager_logger import ManagerLogger
 from service.component.manager_configs import ConfigLoader
+from repository.manager_database import ManagerDatabase
+from repository.category_repository import CategoryRepository
 
 from service.component.initializer_app_component import folder_create
 
@@ -18,6 +20,12 @@ def main():
     manager_logger.messageLogger(f"{manager_logger.info()} Definindo configuração da aplicação.")
     
     configs = ConfigLoader().CONFIGS
+    
+    manager_database: ManagerDatabase = ManagerDatabase(manager_logger, configs['DATABASE'], configs['USER'], configs['HOST'], configs['PASS'], int(configs['PORT']))
+    conn = manager_database.get_connection()
+    
+    category_repository: CategoryRepository= CategoryRepository(manager_logger, conn )
+    categories_insert: list = category_repository.get_all_categories()
     
     link: str = f"{configs['LINK_WEBSITE']}/movie"
     
@@ -44,7 +52,7 @@ def main():
 
     manager_logger.messageLogger(f"{manager_logger.info()} Capturando detalhe de cada filme.")
     
-    categories_insert: list = []
+    categories_insert_run: list = []
     for film in films:
         manager_logger.messageLogger(f"{manager_logger.info()} Buscando dados do filme: {film.get_name()}")
         manager_pages.open_link(film.get_link_page())
@@ -52,13 +60,16 @@ def main():
         
         categories: list = film_manipulat.get_category()
         for category in categories:
-            if category not in categories_insert:
-                categories_insert.append(category)
+            if category not in categories_insert and category not in categories_insert_run:
+                categories_insert_run.append(category.capitalize())
             
         time.sleep(random.randint(1, 10)/5)
         
     web_driver.quit()
-    print(categories_insert)
+    category_repository.get_insert_category(categories_insert_run)
+    
+    
+    manager_database.close_connection()
     
 
 
